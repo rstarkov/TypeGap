@@ -103,6 +103,13 @@ namespace TypeGap
             return v;
         };
 
+        /// <summary>
+        /// This is a huge hack to allow type initialisers to use correct property names where the JSON serializer changes them in some way.
+        /// Note that this method alone does not impact the property names in *models*; only in conversion methods, which is why it's a huge hack.
+        /// To apply the same change to property names, use ITsModelVisitor.
+        /// </summary>
+        public Func<string, string> FnPropertyName { get; set; } = (name) => name;
+
         public Func<AjaxExecContext, string> FnAjaxExecute { get; set; } = (c) => $"this.{c.Ajax}.{c.HttpMethod}({c.Url}, {c.Post}, {c.Options})";
 
         public string PromiseType { get; set; } = "Promise";
@@ -518,10 +525,11 @@ namespace TypeGap
 
         protected virtual Dictionary<string, Type> GetMembersAsParams(Type t)
         {
+#warning This should not exist; we should be looking at TsModel, not reflecting over the type again
             var rpro = t.GetDnxCompatible()
                  .GetProperties(BindingFlags.Instance | BindingFlags.Public)
-                 .ToDictionary(k => k.Name, k => k.PropertyType)
-                 .Concat(t.GetDnxCompatible().GetFields(BindingFlags.Instance | BindingFlags.Public).ToDictionary(k => k.Name, k => k.FieldType));
+                 .ToDictionary(k => _options.FnPropertyName(k.Name), k => k.PropertyType)
+                 .Concat(t.GetDnxCompatible().GetFields(BindingFlags.Instance | BindingFlags.Public).ToDictionary(k => _options.FnPropertyName(k.Name), k => k.FieldType));
             return rpro.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
 
