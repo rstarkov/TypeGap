@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using TypeGap.Extensions;
 using TypeGap.Util;
@@ -128,6 +129,7 @@ namespace TypeGap
                 "declare global {" +
                 (definitions.GetStringBuilder().ToString() + enums.GetStringBuilder()).Replace("declare namespace", "namespace").Replace("\n", "\n    ").TrimEnd() + Environment.NewLine +
                 "}" + Environment.NewLine + globals.GetStringBuilder();
+            prepended = Regex.Replace(prepended, @"[ \t]+(?=\r?\n)", "", RegexOptions.Multiline); // remove trailing whitespace
             return prepended;
         }
 
