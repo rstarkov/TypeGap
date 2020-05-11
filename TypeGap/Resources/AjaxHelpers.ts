@@ -13,14 +13,13 @@
         }
         if (Array.isArray(data)) {
             return data
-                .map((item, i) => _serialize_data(item, pname + "[" + i + "]."))
+                .map((item, i) => typeof item === "object" ? _serialize_data(item, pname + "[" + i + "].") : (pname + "=" + encodeURIComponent(item)))
                 .join("&");
         }
         if (typeof data === "object") {
             return _serialize_data(data, pname + ".");
         }
-        data = encodeURIComponent(data);
-        return pname + "=" + data;
+        return pname + "=" + encodeURIComponent(data);
     }
 
     let skippedName: string;
