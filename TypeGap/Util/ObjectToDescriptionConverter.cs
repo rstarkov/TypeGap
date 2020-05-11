@@ -93,7 +93,7 @@ namespace TypeGap.Util
                     p.IsOptional = pmInfo.IsOptional || nullableBase != null;
                     p.ParameterName = pmInfo.Name;
                     p.ParameterType = nullableBase ?? pmInfo.ParameterType;
-                    if (GetAttributes(pmInfo, "FromUri").Length > 0)
+                    if (GetAttributes(pmInfo, "FromUri").Length > 0 || GetAttributes(pmInfo, "FromQuery").Length > 0)
                         p.Mode = ApiParameterMode.FromUri;
                     else if (GetAttributes(pmInfo, "FromBody").Length > 0)
                         p.Mode = ApiParameterMode.FromBody;
