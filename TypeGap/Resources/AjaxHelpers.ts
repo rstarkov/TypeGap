@@ -67,7 +67,7 @@ function _trim_url(part: any): string {
 
 function _is_real(value: any): boolean {
     // check if a value is real or empty. blank strings considered empty, but zero is not.
-    return value !== "" && value !== undefined && value !== null && Array.isArray(value);
+    return value !== "" && value !== undefined && value !== null;
 }
 
 function _serialize_data(obj: any, prefix: string): string {
