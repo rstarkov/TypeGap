@@ -78,11 +78,6 @@ namespace TypeGap
 
         public Type UnwrapType(Type clrType)
         {
-            if (clrType.IsNullable())
-            {
-                clrType = clrType.GetUnderlyingNullableType();
-            }
-
             if (clrType.IsGenericTask())
             {
                 clrType = clrType.GetUnderlyingTaskType();
@@ -91,6 +86,11 @@ namespace TypeGap
             if (clrType.GetDnxCompatible().IsGenericType && clrType.GetGenericTypeDefinition().FullName == "Microsoft.AspNetCore.Mvc.ActionResult`1")
             {
                 clrType = clrType.GetDnxCompatible().GetGenericArguments().Single();
+            }
+
+            if (clrType.IsNullable())
+            {
+                clrType = clrType.GetUnderlyingNullableType();
             }
 
             return clrType;
