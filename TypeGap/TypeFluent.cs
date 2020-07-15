@@ -32,6 +32,7 @@ namespace TypeGap
         private string _indent = "    ";
         private ITsModelVisitor _modelVisitor;
         private Dictionary<Type, string> _typeConversions;
+        private bool _strictNullChecks;
 
         public TypeFluent Add(Type t)
         {
@@ -103,7 +104,7 @@ namespace TypeGap
             fluent.WithIndentation(_indent);
             fluent.WithModelVisitor(_modelVisitor);
 
-            var converter = new TypeConverter(_namespace, fluent, _typeConversions);
+            var converter = new TypeConverter(_namespace, fluent, _typeConversions, _strictNullChecks);
             fluent.WithDictionaryMemberFormatter(converter);
 
             if (!string.IsNullOrEmpty(_namespace))
@@ -166,6 +167,12 @@ namespace TypeGap
         public TypeFluent WithTypeConversions(Dictionary<Type, string> typeConversions)
         {
             _typeConversions = typeConversions;
+            return this;
+        }
+
+        public TypeFluent WithStrictNullChecks(bool strictNullChecks)
+        {
+            _strictNullChecks = strictNullChecks;
             return this;
         }
 

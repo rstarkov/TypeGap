@@ -535,7 +535,7 @@ namespace TypeGap
 
         protected virtual string CreateTypeInitializerMethod(Type t)
         {
-            t = _converter.UnwrapType(t);
+            (t, _) = _converter.UnwrapType(t);
 
             var tsName = _converter.GetTypeScriptName(t);
             var clrName = _converter.PrettyClrTypeName(t);

@@ -14,41 +14,43 @@ namespace TypeGap
     {
         private readonly string _globalNamespace;
         private readonly TypeScriptFluent _fluent;
-        private static readonly Dictionary<Type, string> _cache;
+        private static readonly Dictionary<Type, (string type, bool nullable)> _cache;
         private readonly Dictionary<Type, string> _customConversions;
+        private readonly bool _strictNullChecks;
 
         static TypeConverter()
         {
-            _cache = new Dictionary<Type, string>();
+            _cache = new Dictionary<Type, (string, bool)>();
             // Integral types
-            _cache.Add(typeof(object), "any");
-            _cache.Add(typeof(bool), "boolean");
-            _cache.Add(typeof(byte), "number");
-            _cache.Add(typeof(sbyte), "number");
-            _cache.Add(typeof(short), "number");
-            _cache.Add(typeof(ushort), "number");
-            _cache.Add(typeof(int), "number");
-            _cache.Add(typeof(uint), "number");
-            _cache.Add(typeof(long), "number");
-            _cache.Add(typeof(ulong), "number");
-            _cache.Add(typeof(float), "number");
-            _cache.Add(typeof(double), "number");
-            _cache.Add(typeof(decimal), "number");
-            _cache.Add(typeof(string), "string");
-            _cache.Add(typeof(char), "string");
-            _cache.Add(typeof(DateTime), "Date");
-            _cache.Add(typeof(DateTimeOffset), "Date");
-            _cache.Add(typeof(byte[]), "string");
-            _cache.Add(typeof(Guid), "string");
-            _cache.Add(typeof(Exception), "string");
-            _cache.Add(typeof(void), "void");
+            _cache.Add(typeof(object), ("any", true));
+            _cache.Add(typeof(bool), ("boolean", false));
+            _cache.Add(typeof(byte), ("number", false));
+            _cache.Add(typeof(sbyte), ("number", false));
+            _cache.Add(typeof(short), ("number", false));
+            _cache.Add(typeof(ushort), ("number", false));
+            _cache.Add(typeof(int), ("number", false));
+            _cache.Add(typeof(uint), ("number", false));
+            _cache.Add(typeof(long), ("number", false));
+            _cache.Add(typeof(ulong), ("number", false));
+            _cache.Add(typeof(float), ("number", false));
+            _cache.Add(typeof(double), ("number", false));
+            _cache.Add(typeof(decimal), ("number", false));
+            _cache.Add(typeof(string), ("string", true));
+            _cache.Add(typeof(char), ("string", false));
+            _cache.Add(typeof(DateTime), ("Date", false));
+            _cache.Add(typeof(DateTimeOffset), ("Date", false));
+            _cache.Add(typeof(byte[]), ("string", true));
+            _cache.Add(typeof(Guid), ("string", false));
+            _cache.Add(typeof(Exception), ("string", true));
+            _cache.Add(typeof(void), ("void", false));
         }
 
-        public TypeConverter(string globalNamespace, TypeScriptFluent fluent, Dictionary<Type, string> customConversions)
+        public TypeConverter(string globalNamespace, TypeScriptFluent fluent, Dictionary<Type, string> customConversions, bool strictNullChecks = false)
         {
             _globalNamespace = globalNamespace;
             _fluent = fluent;
             _customConversions = customConversions;
+            _strictNullChecks = strictNullChecks;
         }
 
         public static bool IsComplexType(Type clrType)
@@ -76,7 +78,7 @@ namespace TypeGap
             return fullName;
         }
 
-        public Type UnwrapType(Type clrType)
+        public (Type type, bool nullable) UnwrapType(Type clrType)
         {
             if (clrType.IsGenericTask())
             {
@@ -88,78 +90,85 @@ namespace TypeGap
                 clrType = clrType.GetDnxCompatible().GetGenericArguments().Single();
             }
 
+            bool nullable = false;
             if (clrType.IsNullable())
             {
                 clrType = clrType.GetUnderlyingNullableType();
+                nullable = true;
             }
 
-            return clrType;
+            if (clrType.IsClass || clrType.IsInterface)
+            {
+                nullable = true;
+            }
+
+            return (clrType, nullable);
         }
 
-        public string GetTypeScriptName(Type clrType)
+        private (string type, bool isComposite) getTypeScriptName(Type clrType)
         {
-            string result;
+            bool nullable;
 
-            clrType = UnwrapType(clrType);
+            (clrType, nullable) = UnwrapType(clrType);
 
-            if (_customConversions != null && _customConversions.TryGetValue(clrType, out result))
+            if (_customConversions != null && _customConversions.TryGetValue(clrType, out var result))
             {
-                return result;
+                return (result, true);
             }
 
-            if (_cache.TryGetValue(clrType, out result))
+            if (_cache.TryGetValue(clrType, out var result2))
             {
-                return result;
+                return typeOrNull(result2.nullable, (result2.type, false));
             }
 
             if (clrType.Name == "IActionResult")
             {
-                return "any /* IActionResult */";
+                return ("any /* IActionResult */", false);
             }
 
             if (clrType.Name == "IFormCollection")
             {
-                return "FormData";
+                return ("FormData", false);
             }
 
             // these objects generally just mean json, so 'any' is appropriate.
             if (clrType.Namespace == "Newtonsoft.Json.Linq")
             {
-                return "any";
+                return ("any", false);
             }
 
             // Dictionaries -- these should come before IEnumerables, because they also implement IEnumerable
             if (clrType.IsIDictionary())
             {
                 if (clrType.GenericTypeArguments.Length != 2)
-                    return "{ [key: string]: any }";
+                    return typeOrNull(true, ("{ [key: string]: any }", false));
 
                 // TODO: can we use Map<> instead? this will break if the first argument is not string | number.
-                return $"{{ [key: {GetTypeScriptName(clrType.GetDnxCompatible().GetGenericArguments()[0])}]: {GetTypeScriptName(clrType.GetDnxCompatible().GetGenericArguments()[1])} }}";
+                return typeOrNull(true, ($"{{ [key: {getTypeScriptName(clrType.GetDnxCompatible().GetGenericArguments()[0]).type}]: {getTypeScriptName(clrType.GetDnxCompatible().GetGenericArguments()[1]).type} }}", false));
             }
 
             if (clrType.IsArray)
             {
-                return GetTypeScriptName(clrType.GetElementType()) + "[]";
+                return typeOrNull(true, (wrapComposite(getTypeScriptName(clrType.GetElementType())) + "[]", false));
             }
 
             if (typeof(IEnumerable).GetDnxCompatible().IsAssignableFrom(clrType))
             {
                 if (clrType.GetDnxCompatible().IsGenericType)
                 {
-                    return GetTypeScriptName(clrType.GetDnxCompatible().GetGenericArguments()[0]) + "[]";
+                    return typeOrNull(true, (wrapComposite(getTypeScriptName(clrType.GetDnxCompatible().GetGenericArguments()[0])) + "[]", false));
                 }
-                return "any[]";
+                return typeOrNull(true, ("any[]", false));
             }
 
             if (clrType.GetDnxCompatible().IsEnum)
             {
                 _fluent.ModelBuilder.Add(clrType);
-                return GetFullName(clrType);
+                return typeOrNull(nullable, (GetFullName(clrType), false));
             }
 
             if (clrType.Namespace == "System" || clrType.Namespace.StartsWith("System."))
-                return "any";
+                return ("any", false);
 
             if (clrType.GetDnxCompatible().IsClass || clrType.GetDnxCompatible().IsInterface)
             {
@@ -173,16 +182,27 @@ namespace TypeGap
                     foreach (var genericArgument in clrType.GetDnxCompatible().GetGenericArguments())
                     {
                         if (count++ != 0) name += ", ";
-                        name += GetTypeScriptName(genericArgument);
+                        name += getTypeScriptName(genericArgument).type;
                     }
                     name += ">";
                 }
-                return name;
+                return typeOrNull(nullable, (name, false));
             }
 
             Console.WriteLine("WARNING: Unknown conversion for type: " + GetFullName(clrType));
-            return "any";
+            return ("any", false);
         }
+
+        private (string type, bool isComposite) typeOrNull(bool isNullable, (string type, bool isComposite) t)
+        {
+            if (!_strictNullChecks)
+                return t;
+            return isNullable ? (wrapComposite(t) + " | null", true) : t;
+        }
+
+        private string wrapComposite((string type, bool isComposite) p) => p.isComposite ? $"({p.type})" : p.type;
+
+        public string GetTypeScriptName(Type clrType) => getTypeScriptName(clrType).type;
 
         public string PrettyClrTypeName(Type t)
         {
