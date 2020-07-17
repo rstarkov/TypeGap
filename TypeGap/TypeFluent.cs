@@ -124,7 +124,7 @@ namespace TypeGap
 
             _enumGenerator.WriteEnums(enumsWriter, globalsWriter, definitionsWriter, model.Enums, converter);
 
-            string prepended = _generateNotice ? Resx.GeneratedNotice + "\r\n\r\n" : "";
+            string prepended = _generateNotice ? Resx.GeneratedNotice + Environment.NewLine + Environment.NewLine : "";
             prepended +=
                 services.GetStringBuilder() + Environment.NewLine +
                 "declare global {" +
