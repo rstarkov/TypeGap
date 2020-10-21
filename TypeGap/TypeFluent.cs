@@ -116,8 +116,11 @@ namespace TypeGap
             var apiGen = new GapApiGenerator(converter, _indent, options ?? new GapApiGeneratorOptions());
             apiGen.WriteServices(_apis.ToArray(), servicesWriter);
 
-            var signalr = new SignalRGenerator();
-            signalr.WriteHubs(_hubs.ToArray(), converter, servicesWriter);
+            if (_hubs.Count > 0)
+            {
+                var signalr = new SignalRGenerator();
+                signalr.WriteHubs(_hubs.ToArray(), converter, servicesWriter);
+            }
 
             var tsClassDefinitions = fluent.Generate(TsGeneratorOutput.Properties | TsGeneratorOutput.Fields);
             definitionsWriter.Write(tsClassDefinitions);
