@@ -1,4 +1,4 @@
-﻿function _build_url(basePath: any, pathArray: any, queryArray: any[]): string {
+﻿function _build_url(basePath: any, pathArray: any, queryArray: any[]): string | null{
     // turn url fragments into a full path, and validate user input
     let output = _trim_url(basePath);
 
@@ -22,7 +22,7 @@
         return pname + "=" + encodeURIComponent(data);
     }
 
-    let skippedName: string;
+    let skippedName: string | undefined = undefined;
 
     for (const data of pathArray) {
         if (typeof data === "string" || data instanceof String) {
