@@ -1,8 +1,8 @@
-﻿function _build_url(basePath: any, pathArray: any, queryArray: any[]): string | null{
+﻿function _build_url(basePath: any, pathArray: any, queryArray: any[]): string {
     // turn url fragments into a full path, and validate user input
     let output = _trim_url(basePath);
 
-    function encode(data: any, pname: string, isOptional: boolean, isRoute: boolean): string {
+    function encode(data: any, pname: string, isOptional: boolean, isRoute: boolean): string | null {
         if (!_is_real(data)) {
             if (isRoute || !isOptional)
                 throw new Error("Parameter '" + pname + "' is not optional but a value was not provided.");
