@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -289,6 +289,7 @@ namespace TypeGap
                     var absolute = art.StartsWith("/");
                     template = absolute ? art : JoinUrls(template, art);
                 }
+                template = template.Trim('/');
             }
 
             template = Regex.Replace(template, actionRegex, action.ActionName, RegexOptions.IgnoreCase);
